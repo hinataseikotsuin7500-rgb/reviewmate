@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReviewMate — プランのアップグレード</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1117; color: #e6edf3; min-height: 100vh;
+    }
+    header {
+      padding: 16px 24px; border-bottom: 1px solid #21262d;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: #f78166; }
+    header a { margin-left: auto; color: #8b949e; text-decoration: none; font-size: 13px; }
+    header a:hover { color: #e6edf3; }
+    .main { max-width: 900px; margin: 60px auto; padding: 0 24px; text-align: center; }
+    h2 { font-size: 28px; margin-bottom: 12px; }
+    .subtitle { color: #8b949e; margin-bottom: 48px; font-size: 15px; }
+    .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .plan {
+      background: #161b22; border: 1px solid #21262d; border-radius: 12px;
+      padding: 28px 24px; text-align: left; position: relative;
+    }
+    .plan.popular { border-color: #da3633; }
+    .badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: #da3633; color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 12px; border-radius: 20px;
+    }
+    .plan-name { font-size: 16px; font-weight: 700; color: #8b949e; margin-bottom: 8px; }
+    .price { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+    .price span { font-size: 14px; color: #8b949e; font-weight: 400; }
+    .limit { color: #f78166; font-size: 13px; margin-bottom: 20px; }
+    .features { list-style: none; margin-bottom: 24px; }
+    .features li { font-size: 13px; color: #c9d1d9; padding: 5px 0; border-bottom: 1px solid #21262d; }
+    .features li::before { content: '✓ '; color: #3fb950; }
+    .btn {
+      display: block; width: 100%; padding: 11px; border-radius: 6px;
+      font-size: 14px; font-weight: 600; cursor: pointer; text-align: center;
+      border: none; transition: all 0.2s;
+    }
+    .btn-free { background: #21262d; color: #e6edf3; }
+    .btn-free:hover { background: #30363d; }
+    .btn-paid { background: #da3633; color: #fff; }
+    .btn-paid:hover { background: #f85149; }
+    .btn-paid:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+    .alert {
+      max-width: 500px; margin: 0 auto 32px; padding: 14px 20px;
+      border-radius: 8px; font-size: 14px;
+    }
+    .alert-success { background: #0d2818; border: 1px solid #3fb950; color: #3fb950; }
+    .alert-info { background: #161b22; border: 1px solid #58a6ff; color: #58a6ff; }
+    @media (max-width: 640px) { .plans { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🔍 ReviewMate</h1>
+  <a href="/app">← アプリに戻る</a>
+</header>
+
+<div class="main">
+  <div id="alertBox" style="display:none"></div>
+
+  <h2>プランを選択</h2>
+  <p class="subtitle">いつでもキャンセル可能。上位プランほどコストパフォーマンスが上がります。</p>
+
+  <div class="plans">
+    <!-- Free -->
+    <div class="plan">
+      <div class="plan-name">Free</div>
+      <div class="price">¥0 <span>/月</span></div>
+      <div class="limit">月5回まで</div>
+      <ul class="features">
+        <li>全観点レビュー</li>
+        <li>バグ・セキュリティ検出</li>
+        <li>パフォーマンス分析</li>
+        <li>クレジットカード不要</li>
+      </ul>
+      <button class="btn btn-free" onclick="window.location.href='/app'">現在のプラン</button>
+    </div>
+
+    <!-- Solo -->
+    <div class="plan popular">
+      <div class="badge">人気</div>
+      <div class="plan-name">Solo</div>
+      <div class="price">¥1,500 <span>/月</span></div>
+      <div class="limit">月50回まで</div>
+      <ul class="features">
+        <li>Freeの全機能</li>
+        <li>月50回レビュー</li>
+        <li>優先レスポンス</li>
+        <li>いつでもキャンセル可</li>
+      </ul>
+      <button class="btn btn-paid" id="soloBtn" onclick="checkout('solo')">Soloにアップグレード</button>
+    </div>
+
+    <!-- Team -->
+    <div class="plan">
+      <div class="plan-name">Team</div>
+      <div class="price">¥8,000 <span>/月</span></div>
+      <div class="limit">月500回まで</div>
+      <ul class="features">
+        <li>Soloの全機能</li>
+        <li>月500回レビュー</li>
+        <li>チーム利用向け</li>
+        <li>いつでもキャンセル可</li>
+      </ul>
+      <button class="btn btn-paid" id="teamBtn" onclick="checkout('team')">Teamにアップグレード</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const alertBox = document.getElementById('alertBox');
+  if (params.get('success')) {
+    alertBox.innerHTML = '<div class="alert alert-success">✅ アップグレード完了！新しいプランが適用されました。</div>';
+    alertBox.style.display = 'block';
+  } else if (params.get('canceled')) {
+    alertBox.innerHTML = '<div class="alert alert-info">ℹ️ 決済がキャンセルされました。</div>';
+    alertBox.style.display = 'block';
+  }
+
+  async function checkout(planId) {
+    const token = localStorage.getItem('rm_token');
+    if (!token) { window.location.href = '/login'; return; }
+
+    const btn = document.getElementById(planId + 'Btn');
+    btn.disabled = true;
+    btn.textContent = '処理中...';
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'エラーが発生しました');
+        btn.disabled = false;
+        btn.textContent = planId === 'solo' ? 'Soloにアップグレード' : 'Teamにアップグレード';
+      }
+    } catch {
+      alert('サーバーに接続できませんでした');
+      btn.disabled = false;
+      btn.textContent = planId === 'solo' ? 'Soloにアップグレード' : 'Teamにアップグレード';
+    }
+  }
+</script>
+</body>
+</html>
