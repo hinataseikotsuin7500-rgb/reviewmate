@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReviewMate — ログイン</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 40px; width: 360px; }
+    .logo { font-size: 22px; font-weight: 800; color: #f78166; text-align: center; margin-bottom: 24px; }
+    .tabs { display: flex; background: #0d1117; border-radius: 8px; padding: 4px; margin-bottom: 24px; }
+    .tab { flex: 1; padding: 8px; text-align: center; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; color: #8b949e; }
+    .tab.active { background: #21262d; color: #e6edf3; }
+    label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
+    input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px; font-size: 14px; color: #e6edf3; margin-bottom: 16px; }
+    input:focus { outline: none; border-color: #f78166; }
+    .btn { width: 100%; padding: 11px; background: #da3633; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #f85149; }
+    .err { color: #f85149; font-size: 13px; margin-bottom: 12px; display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🔍 ReviewMate</div>
+  <div class="tabs">
+    <div class="tab active" id="tabLogin" onclick="switchTab('login')">ログイン</div>
+    <div class="tab" id="tabSignup" onclick="switchTab('signup')">新規登録</div>
+  </div>
+  <div id="err" class="err"></div>
+  <label>メールアドレス</label>
+  <input type="email" id="email" placeholder="you@example.com" />
+  <label>パスワード</label>
+  <input type="password" id="password" placeholder="8文字以上" />
+  <button class="btn" id="submitBtn" onclick="handleSubmit()">ログイン</button>
+</div>
+<script>
+  let mode = 'login';
+  const params = new URLSearchParams(location.search);
+  if (params.get('tab') === 'signup') switchTab('signup');
+
+  function switchTab(m) {
+    mode = m;
+    document.getElementById('tabLogin').classList.toggle('active', m === 'login');
+    document.getElementById('tabSignup').classList.toggle('active', m === 'signup');
+    document.getElementById('submitBtn').textContent = m === 'login' ? 'ログイン' : '新規登録';
+    document.getElementById('err').style.display = 'none';
+  }
+
+  async function handleSubmit() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('err');
+    const btn = document.getElementById('submitBtn');
+    errEl.style.display = 'none';
+    if (!email || !password) { errEl.textContent = '入力してください'; errEl.style.display = 'block'; return; }
+    btn.disabled = true;
+    btn.textContent = '処理中...';
+    try {
+      const res = await fetch(`/api/auth/${mode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'エラーが発生しました'; errEl.style.display = 'block'; return; }
+      localStorage.setItem('rm_token', data.token);
+      localStorage.setItem('rm_user', JSON.stringify(data.user));
+      window.location.href = '/app';
+    } catch {
+      errEl.textContent = 'サーバーに接続できませんでした';
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = mode === 'login' ? 'ログイン' : '新規登録';
+    }
+  }
+</script>
+</body>
+</html>

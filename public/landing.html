@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReviewMate — AIコードレビューを即座に</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; border-bottom: 1px solid #21262d; position: sticky; top: 0; background: #0d1117; z-index: 100; }
+    .nav-logo { font-size: 20px; font-weight: 800; color: #f78166; }
+    .nav-links { display: flex; gap: 12px; }
+    .btn { padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .btn-outline { border: 1px solid #30363d; color: #e6edf3; background: transparent; }
+    .btn-outline:hover { border-color: #f78166; color: #f78166; }
+    .btn-primary { background: #da3633; color: #fff; border: none; }
+    .btn-primary:hover { background: #f85149; }
+    .btn-lg { padding: 14px 32px; font-size: 16px; border-radius: 8px; }
+    .hero { text-align: center; padding: 100px 20px 80px; background: radial-gradient(ellipse at 50% 0%, rgba(247,129,102,0.08) 0%, transparent 60%); }
+    .hero-badge { display: inline-block; background: rgba(247,129,102,0.1); border: 1px solid rgba(247,129,102,0.3); color: #f78166; border-radius: 20px; padding: 4px 14px; font-size: 13px; margin-bottom: 24px; }
+    .hero h1 { font-size: 52px; font-weight: 800; line-height: 1.15; margin-bottom: 20px; }
+    .hero h1 span { color: #f78166; }
+    .hero p { font-size: 18px; color: #8b949e; max-width: 560px; margin: 0 auto 40px; line-height: 1.7; }
+    .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .how { padding: 80px 20px; }
+    .how h2, .features h2, .pricing h2, .cta h2 { text-align: center; font-size: 32px; margin-bottom: 48px; }
+    .steps { display: flex; gap: 32px; max-width: 800px; margin: 0 auto; justify-content: center; flex-wrap: wrap; }
+    .step { flex: 1; min-width: 180px; max-width: 200px; text-align: center; }
+    .step-num { width: 48px; height: 48px; border-radius: 50%; background: rgba(247,129,102,0.1); border: 2px solid rgba(247,129,102,0.3); color: #f78166; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .step h3 { font-size: 16px; margin-bottom: 8px; }
+    .step p { font-size: 14px; color: #8b949e; line-height: 1.6; }
+    .features { padding: 80px 20px; max-width: 960px; margin: 0 auto; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .feature-card { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 24px; transition: border-color 0.2s; }
+    .feature-card:hover { border-color: #f78166; }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 16px; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: #8b949e; line-height: 1.6; }
+    .pricing { padding: 80px 20px; background: #161b22; }
+    .plans { display: flex; gap: 20px; max-width: 800px; margin: 0 auto; justify-content: center; flex-wrap: wrap; }
+    .plan { flex: 1; min-width: 220px; max-width: 240px; background: #0d1117; border: 1px solid #21262d; border-radius: 12px; padding: 28px; position: relative; }
+    .plan.popular { border-color: #da3633; }
+    .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #da3633; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 14px; border-radius: 12px; }
+    .plan h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .plan-price { font-size: 36px; font-weight: 800; color: #f78166; margin-bottom: 4px; }
+    .plan-price span { font-size: 14px; color: #8b949e; font-weight: 400; }
+    .plan-limit { font-size: 13px; color: #8b949e; margin-bottom: 20px; }
+    .plan ul { list-style: none; }
+    .plan li { font-size: 13px; color: #8b949e; padding: 4px 0; }
+    .plan li::before { content: '✓ '; color: #3fb950; }
+    .cta { padding: 100px 20px; text-align: center; }
+    .cta p { font-size: 16px; color: #8b949e; margin-bottom: 36px; }
+    footer { padding: 32px 40px; border-top: 1px solid #21262d; text-align: center; color: #8b949e; font-size: 13px; }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo">🔍 ReviewMate</div>
+  <div class="nav-links">
+    <a href="/login" class="btn btn-outline">ログイン</a>
+    <a href="/login?tab=signup" class="btn btn-primary">無料で始める</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">🤖 Claude AI 搭載</div>
+  <h1>コードレビューを<br><span>AIに任せよう</span></h1>
+  <p>バグ・セキュリティ・パフォーマンス・可読性を<br>数秒で自動レビュー。レビュー待ち時間ゼロ。</p>
+  <div class="hero-cta">
+    <a href="/login?tab=signup" class="btn btn-primary btn-lg">無料で試す（月5回）</a>
+    <a href="#features" class="btn btn-outline btn-lg">機能を見る</a>
+  </div>
+</section>
+
+<section class="how">
+  <h2>使い方はシンプル</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>コードを貼り付け</h3>
+      <p>レビューしたいコードをエディタに貼り付けます</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>観点を選択</h3>
+      <p>バグ・セキュリティ・パフォーマンス・可読性・総合から選択</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>レビュー完了</h3>
+      <p>AIが重要度付きで指摘事項を列挙。改善コードも提示</p>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <h2>ReviewMateの特徴</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🐛</div>
+      <h3>バグ検出</h3>
+      <p>論理エラー・ヌルポインタ・境界値など潜在的なバグを発見します</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>セキュリティ診断</h3>
+      <p>SQLインジェクション・XSS・認証不備などの脆弱性を検出します</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>パフォーマンス分析</h3>
+      <p>N+1問題・不要なループ・メモリリークなどを指摘します</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📖</div>
+      <h3>可読性改善</h3>
+      <p>命名規則・コメント・リファクタリング提案で保守性を向上させます</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>総合評価S〜D</h3>
+      <p>コード品質をS/A/B/C/Dで評価。改善の優先度が一目でわかります</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌏</div>
+      <h3>日本語対応</h3>
+      <p>全ての指摘・提案が日本語。チームへの共有もスムーズです</p>
+    </div>
+  </div>
+</section>
+
+<section class="pricing">
+  <h2>シンプルな料金プラン</h2>
+  <div class="plans">
+    <div class="plan">
+      <h3>Free</h3>
+      <div class="plan-price">¥0<span>/月</span></div>
+      <div class="plan-limit">月5回まで</div>
+      <ul><li>全観点レビュー</li><li>クレジットカード不要</li></ul>
+    </div>
+    <div class="plan popular">
+      <div class="plan-badge">人気</div>
+      <h3>Solo</h3>
+      <div class="plan-price">¥1,500<span>/月</span></div>
+      <div class="plan-limit">月50回まで</div>
+      <ul><li>全観点レビュー</li><li>Freeの10倍の回数</li></ul>
+    </div>
+    <div class="plan">
+      <h3>Team</h3>
+      <div class="plan-price">¥8,000<span>/月</span></div>
+      <div class="plan-limit">月500回まで</div>
+      <ul><li>全観点レビュー</li><li>チーム利用向け</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>今すぐコードレビューを<br>自動化しよう</h2>
+  <p>無料プランから始められます。クレジットカード不要。</p>
+  <a href="/login?tab=signup" class="btn btn-primary btn-lg">無料アカウントを作成</a>
+</section>
+
+<footer>© 2026 ReviewMate — Powered by Claude AI</footer>
+
+<script>
+  const token = localStorage.getItem('rm_token');
+  if (token) window.location.href = '/app';
+</script>
+</body>
+</html>

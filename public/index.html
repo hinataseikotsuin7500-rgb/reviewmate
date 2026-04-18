@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReviewMate — AIコードレビュー</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 12px 20px; border-bottom: 1px solid #21262d; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; font-weight: 700; color: #f78166; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .usage-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #8b949e; }
+    .usage-track { width: 80px; height: 4px; background: #21262d; border-radius: 2px; }
+    .usage-fill { height: 100%; border-radius: 2px; background: #3fb950; transition: width 0.3s; }
+    .usage-fill.warn { background: #d29922; }
+    .usage-fill.full { background: #f85149; }
+    .btn-upgrade { background: #da3633; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .user-info { font-size: 12px; color: #8b949e; }
+    .btn-logout { background: transparent; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .btn-logout:hover { border-color: #f85149; color: #f85149; }
+
+    .main { display: grid; grid-template-columns: 1fr 1fr; flex: 1; }
+    .panel { display: flex; flex-direction: column; }
+    .panel-header { padding: 10px 16px; border-bottom: 1px solid #21262d; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #8b949e; }
+    .panel-header span { font-weight: 600; }
+
+    select, .btn-review { padding: 5px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    select { background: #21262d; border: 1px solid #30363d; color: #e6edf3; }
+    .btn-review { background: #da3633; color: #fff; border: none; margin-left: auto; padding: 6px 16px; }
+    .btn-review:hover { background: #f85149; }
+    .btn-review:disabled { background: #30363d; cursor: not-allowed; }
+
+    textarea { flex: 1; background: #0d1117; border: none; color: #e6edf3; font-family: 'Courier New', monospace; font-size: 13px; padding: 16px; resize: none; outline: none; border-right: 1px solid #21262d; min-height: 400px; line-height: 1.6; }
+    .preview { flex: 1; padding: 16px; overflow-y: auto; min-height: 400px; }
+    .preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #8b949e; gap: 12px; font-size: 14px; }
+    .preview-empty .icon { font-size: 40px; }
+
+    /* マークダウンスタイル */
+    .preview h2 { font-size: 16px; color: #f78166; margin: 16px 0 8px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+    .preview h3 { font-size: 14px; color: #58a6ff; margin: 12px 0 6px; }
+    .preview p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; color: #e6edf3; }
+    .preview ul, .preview ol { padding-left: 20px; margin-bottom: 8px; }
+    .preview li { font-size: 14px; line-height: 1.7; color: #e6edf3; }
+    .preview code { background: #161b22; padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #f78166; }
+    .preview pre { background: #161b22; padding: 12px; border-radius: 6px; overflow-x: auto; margin-bottom: 8px; }
+    .preview pre code { background: none; padding: 0; color: #e6edf3; }
+    .preview strong { color: #e6edf3; font-weight: 700; }
+    .preview blockquote { border-left: 3px solid #30363d; padding-left: 12px; color: #8b949e; margin-bottom: 8px; }
+
+    .grade { display: inline-block; padding: 2px 10px; border-radius: 4px; font-weight: 800; font-size: 18px; margin-right: 8px; }
+    .grade-S { background: #1a7f37; color: #fff; }
+    .grade-A { background: #1f6feb; color: #fff; }
+    .grade-B { background: #9e6a03; color: #fff; }
+    .grade-C { background: #da3633; color: #fff; }
+    .grade-D { background: #6e7681; color: #fff; }
+
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: #8b949e; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #21262d; border-top-color: #f78166; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .banner { background: rgba(218,54,51,0.1); border: 1px solid rgba(218,54,51,0.3); border-radius: 6px; padding: 10px 16px; margin: 8px 16px; font-size: 13px; display: none; }
+    .banner a { color: #f78166; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🔍 ReviewMate</h1>
+  <div class="header-right">
+    <div class="usage-bar">
+      <span id="usageText">-/-</span>
+      <div class="usage-track"><div class="usage-fill" id="usageFill" style="width:0%"></div></div>
+    </div>
+    <button class="btn-upgrade" id="upgradeBtn" style="display:none" onclick="window.location.href='/upgrade'">⚡ アップグレード</button>
+    <span class="user-info" id="userInfo"></span>
+    <button class="btn-logout" onclick="logout()">ログアウト</button>
+  </div>
+</header>
+
+<div class="banner" id="limitBanner">
+  今月の無料枠（5回）を使い切りました。<a onclick="window.location.href='/upgrade'">アップグレードして続ける →</a>
+</div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-header">
+      <span>📝 コード入力</span>
+      <select id="langSelect">
+        <option value="">言語を選択</option>
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="python">Python</option>
+        <option value="java">Java</option>
+        <option value="go">Go</option>
+        <option value="ruby">Ruby</option>
+        <option value="php">PHP</option>
+        <option value="rust">Rust</option>
+        <option value="sql">SQL</option>
+      </select>
+      <select id="reviewType">
+        <option value="all">総合レビュー</option>
+        <option value="bug">🐛 バグ検出</option>
+        <option value="security">🔒 セキュリティ</option>
+        <option value="performance">⚡ パフォーマンス</option>
+        <option value="readability">📖 可読性</option>
+      </select>
+      <button class="btn-review" id="reviewBtn" onclick="doReview()">🔍 レビューする</button>
+    </div>
+    <textarea id="codeInput" placeholder="ここにレビューしたいコードを貼り付けてください...&#10;&#10;例：関数・クラス・APIエンドポイントなど何でもOK"></textarea>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <span>📊 レビュー結果</span>
+    </div>
+    <div class="preview" id="preview">
+      <div class="preview-empty">
+        <div class="icon">🔍</div>
+        <div>コードを入力して「レビューする」を押してください</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem('rm_token');
+if (!token) window.location.href = '/login';
+
+async function loadMe() {
+  const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) { window.location.href = '/login'; return; }
+  const { user, usage, limit } = await res.json();
+  document.getElementById('userInfo').textContent = user.email;
+  updateUsageBar(usage, limit);
+  if (usage >= limit) {
+    document.getElementById('limitBanner').style.display = 'block';
+    document.getElementById('upgradeBtn').style.display = 'block';
+  }
+}
+
+function updateUsageBar(usage, limit) {
+  const pct = Math.min(100, (usage / limit) * 100);
+  document.getElementById('usageText').textContent = `${usage}/${limit}回`;
+  const fill = document.getElementById('usageFill');
+  fill.style.width = pct + '%';
+  fill.className = 'usage-fill' + (pct >= 100 ? ' full' : pct >= 70 ? ' warn' : '');
+}
+
+function logout() {
+  localStorage.removeItem('rm_token');
+  localStorage.removeItem('rm_user');
+  window.location.href = '/';
+}
+
+async function doReview() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (!code) return;
+  const reviewType = document.getElementById('reviewType').value;
+  const language = document.getElementById('langSelect').value;
+  const btn = document.getElementById('reviewBtn');
+  btn.disabled = true; btn.textContent = '解析中...';
+  document.getElementById('preview').innerHTML = '<div class="loading"><div class="spinner"></div><div>AIがコードを解析中...</div></div>';
+
+  try {
+    const res = await fetch('/api/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ code, reviewType, language }),
+    });
+    const data = await res.json();
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    if (res.status === 429) {
+      document.getElementById('limitBanner').style.display = 'block';
+      document.getElementById('upgradeBtn').style.display = 'block';
+      document.getElementById('preview').innerHTML = '<div class="preview-empty"><div class="icon">⚠️</div><div>今月の利用上限に達しました</div></div>';
+      return;
+    }
+    if (!res.ok) {
+      document.getElementById('preview').innerHTML = `<div class="preview-empty"><div class="icon">❌</div><div>${data.error || 'エラーが発生しました'}</div></div>`;
+      return;
+    }
+    document.getElementById('preview').innerHTML = renderMarkdown(data.result);
+    updateUsageBar(data.usage, data.limit);
+  } catch (e) {
+    document.getElementById('preview').innerHTML = '<div class="preview-empty"><div class="icon">❌</div><div>サーバーに接続できませんでした</div></div>';
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 レビューする';
+  }
+}
+
+function renderMarkdown(md) {
+  return md
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[hup]|<li|<block|<pre)(.+)$/gm, '<p>$1</p>')
+    .replace(/<p><\/p>/g, '');
+}
+
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') doReview();
+});
+
+loadMe();
+</script>
+</body>
+</html>
