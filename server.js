@@ -140,6 +140,34 @@ app.post('/api/checkout', async (c) => {
   if (!user) return c.json({ error: 'ログインが必要です' }, 401);
   const { planId } = await c.req.json();
   if (!planId || planId === 'free') return c.json({ error: '無効なプランです' }, 400);
+
+  const APP_URL = process.env.APP_URL || 'https://reviewmate-5dyo.onrender.com';
+
+  // Stripe Checkout Session（本番）
+  if (process.env.STRIPE_SECRET_KEY) {
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const priceMap = { solo: process.env.STRIPE_PRICE_SOLO, team: process.env.STRIPE_PRICE_TEAM };
+    const priceId = priceMap[planId];
+    if (!priceId) return c.json({ error: '価格IDが設定されていません。管理者にお問い合わせください。' }, 500);
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        customer_email: user.email,
+        client_reference_id: user.id,
+        metadata: { planId },
+        success_url: `${APP_URL}/upgrade?success=true`,
+        cancel_url: `${APP_URL}/upgrade?canceled=true`,
+      });
+      return c.json({ url: session.url });
+    } catch (err) {
+      console.error('Stripe checkout error:', err.message);
+      return c.json({ error: '決済セッションの作成に失敗しました' }, 500);
+    }
+  }
+
+  // フォールバック（開発用）
   const linkMap = {
     solo: process.env.STRIPE_LINK_SOLO || 'https://buy.stripe.com/test_eVqdR91eX5nUgUN6fY9bO00',
     team: process.env.STRIPE_LINK_TEAM || 'https://buy.stripe.com/test_bJecN58Hp7w28ohawe9bO01',
@@ -147,6 +175,44 @@ app.post('/api/checkout', async (c) => {
   const url = linkMap[planId];
   if (!url) return c.json({ error: '無効なプランです' }, 400);
   return c.json({ url });
+});
+
+// ── Stripe Webhook ──
+app.post('/api/stripe/webhook', async (c) => {
+  const sig = c.req.header('stripe-signature');
+  const body = await c.req.text();
+
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return c.json({ received: true });
+  }
+
+  const Stripe = require('stripe');
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook署名の検証失敗:', err.message);
+    return c.json({ error: 'Invalid signature' }, 400);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const userId = session.client_reference_id;
+    const planId = session.metadata?.planId;
+    if (userId && planId && PLANS[planId]) {
+      db.updateUser(userId, { plan: planId });
+      console.log(`✅ プランアップグレード: userId=${userId} → ${planId}`);
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    console.log('サブスクリプションキャンセル:', event.data.object.id);
+    // 必要に応じてプランをfreeに戻す処理をここに追加
+  }
+
+  return c.json({ received: true });
 });
 
 const PORT = parseInt(process.env.PORT) || 3001;
