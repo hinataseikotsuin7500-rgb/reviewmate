@@ -24,6 +24,35 @@ if (!MOCK_MODE) {
 
 const app = new Hono();
 
+// ── ログイン試行回数の制限 ──
+const loginAttempts = new Map(); // email → { count, lockedUntil }
+const MAX_ATTEMPTS = 10;
+const LOCK_MINUTES = 30;
+
+function checkLoginLock(email) {
+  const entry = loginAttempts.get(email);
+  if (!entry) return { locked: false };
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) {
+    const remaining = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return { locked: true, remaining };
+  }
+  return { locked: false };
+}
+
+function recordFailedLogin(email) {
+  const entry = loginAttempts.get(email) || { count: 0 };
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOCK_MINUTES * 60 * 1000;
+    entry.count = 0;
+  }
+  loginAttempts.set(email, entry);
+}
+
+function resetLoginAttempts(email) {
+  loginAttempts.delete(email);
+}
+
 async function getUser(c) {
   const auth = c.req.header('Authorization') || '';
   const token = auth.replace('Bearer ', '');
@@ -54,10 +83,25 @@ app.post('/api/auth/signup', async (c) => {
 
 app.post('/api/auth/login', async (c) => {
   const { email, password } = await c.req.json();
+
+  // ロック確認
+  const lock = checkLoginLock(email);
+  if (lock.locked) {
+    return c.json({ error: `ログインが一時的にロックされています。${lock.remaining}分後に再試行してください。` }, 429);
+  }
+
   const user = db.findUserByEmail(email);
-  if (!user) return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
+  if (!user) {
+    recordFailedLogin(email);
+    return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
+  }
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
+  if (!ok) {
+    recordFailedLogin(email);
+    return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
+  }
+
+  resetLoginAttempts(email);
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
   return c.json({ token, user: { id: user.id, email: user.email, plan: user.plan } });
 });
